@@ -263,6 +263,9 @@ class HasFileParams(Params):
 
 @inherit_doc
 class BaseTextFileTransformer(Transformer,  Processor, HasConfig):
+    """
+    Example transformer.
+    """
 
     @keyword_only
     def __init__(self, config=None):
@@ -292,6 +295,9 @@ class BaseTextFileTransformer(Transformer,  Processor, HasConfig):
 
 @inherit_doc
 class BaseStreamProcessor(Transformer, Processor, HasConfig):
+    """
+    Example transformer.
+    """
 
     @keyword_only
     def __init__(self, config=None):

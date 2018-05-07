@@ -1,4 +1,4 @@
 hdfs3
 happybase
+pyspark==1.6
 PyYAML
-pyspark

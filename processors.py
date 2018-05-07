@@ -1,3 +1,5 @@
+import json
+
 from pyspark.ml import Pipeline
 from pyspark.ml.util import keyword_only
 
@@ -24,6 +26,10 @@ class DummyProcessor(Pipeline, BaseStreamProcessor, HasStreamingContext):
         kwargs = self.__init__._input_kwargs
         self._set(**kwargs)
 
+    def _transform(self, dataset):
+        dataset = [stream.map(json.loads) for stream in dataset]
+        return super()._transform(dataset)
+
     def process(self, row):
         if len(row) != 0:
             key = row[0]
@@ -43,7 +49,7 @@ class TextProcessor(Pipeline, BaseTextFileTransformer):
     TABLE_NAME = 'dummy_table'
     COLUMN_FAMILY = 'dummy'
     COLUMN = 'count'
-    FILE_SOURCE = 'resources/batch_test'
+    FILE_SOURCE = 'test_resources/batch_test'
     FILE_DEST = 'result'
     @keyword_only
     def __init__(self, config=None):

@@ -13,8 +13,8 @@ from dte_app import DataTransformationEngine
 from processors import DummyProcessor
 from socket_server import SocketServer
 
-test_file_path_1 = 'resources/test1'
-test_file_path_2 = 'resources/test2'
+test_file_path_1 = 'test_resources/test1'
+test_file_path_2 = 'test_resources/test2'
 
 
 # TODO should split streaming and batch tests
@@ -117,29 +117,26 @@ class StreamingTest(PySparkStreamingTestCase):
 
         # streaming engine test configuration
         cls.engine_config = {
-            'processorsDir': 'processors',
-            'socketServer': {
-                'socketPort': 4444,  # port of socket server
-            },
-            'kafkaSource': {
-                'zkQuorum': cls._kafkaTestUtils.zkAddress(),
-                'groupId': 'test-streaming-consumer',
-                'kafkaParams': {'auto.offset.reset': 'largest'},
-            },
-            'processor': {
-                'window': 20,
-                'processorExecutors': None,
-                'hbase': {
-                    'host': 'localhost',
-                    'port': cls.thrift_port
-                },
-                'hdfs': 'hdfs://localhost:{}/'.format(cls._hbaseTestingUtility.getDFSCluster().getFileSystem()
-                                                      .getUri().getPort())
-            },
-            'hadoopConf': {
+            'socketServer.port': 4444,  # port of socket server
+
+            'hadoop.dfs.url': 'hdfs://localhost:{}/'.format(cls._hbaseTestingUtility.getDFSCluster().getFileSystem()
+                                                      .getUri().getPort()),
+            'hadoop.conf': {
                 'hbase.table.sanity.checks': False,
                 'hbase.zookeeper.property.clientPort': cls._kafkaTestUtils.zkAddress().split(':')[1]
-            }
+            },
+
+            'zookeeper.zkQuorum': cls._kafkaTestUtils.zkAddress(),
+
+            'kafka.groupId': 'test-streaming-consumer',
+            'kafka.params': {'auto.offset.reset': 'largest'},
+
+            'hbase.host': 'localhost',
+            'hbase.port': cls.thrift_port,
+
+            'processor.dir': './',
+            'processor.joinWindow': 20,
+            'processor.poolExecutors': 1
         }
 
     @classmethod
@@ -176,9 +173,8 @@ class StreamingTest(PySparkStreamingTestCase):
 
         connection = happybase.Connection(port=self.thrift_port)
 
-        with open(test_file_path_1) as test_file_1, open(test_file_path_2) as test_file_2:
-            test_1 = test_file_1.read()
-            test_2 = test_file_2.read()
+        test_1 = '{"id": "12345", "score": "100"}'
+        test_2 = '{"id": "12345", "region": "California"}'
 
         self._kafkaTestUtils.sendMessages(self.test_topic_1, {test_1: 5})
         self._kafkaTestUtils.sendMessages(self.test_topic_2, {test_2: 5})
@@ -226,7 +222,7 @@ class StreamingTest(PySparkStreamingTestCase):
                             port=dfs.getUri().getPort(),
                             pars={'dfs.client.read.shortcircuit': 'false'})
 
-        hdfs.put('resources/batch_test', '/batch_test')
+        hdfs.put('test_resources/batch_test', '/batch_test')
 
         self.engine_config['mode'] = 'batch'
         engine = DataTransformationEngine(self.sc, self.engine_config)
