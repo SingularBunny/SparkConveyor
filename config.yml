@@ -1,0 +1,29 @@
+# Engine
+engine.mode: 'stream'
+
+# Socket server
+socketServer.port: 4444  # port of socket server
+
+# Hadoop
+hadoop.dfs.url: 'hdfs://localhost:8081/'
+hadoop.conf:
+  hbase.table.sanity.checks: False,
+  hbase.zookeeper.property.clientPort: 2181
+  # etc
+
+# Zookeeper
+zookeeper.zkQuorum: localhost:2181
+
+# Kafka
+kafka.groupId: 'test-streaming-consumer'
+kafka.params:
+  auto.offset.reset: 'largest'
+
+# Hbase
+hbase.host: 'localhost'
+hbase.port: 9090
+
+# Processors
+processor.dir: '/'
+processor.joinWindow: 20
+processor.poolExecutors: 1
