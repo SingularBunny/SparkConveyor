@@ -1,40 +1,38 @@
 import json
 
-from pyspark.ml import Pipeline
 from pyspark.ml.util import keyword_only
 
-from processing import BaseTextFileTransformer, BaseStreamProcessor, HasStreamingContext
+from processing import BaseTextFileTransformer, BaseStreamProcessor
 from receivers import HbaseReceiver, FileReceiver
 from sources import KafkaStreamSource, FileSource
 
 
-class DummyProcessor(Pipeline, BaseStreamProcessor, HasStreamingContext):
+class DummyProcessor(BaseStreamProcessor):
     TABLE_NAME = 'dummy_table'
     COLUMN_FAMILY = 'dummy'
     COLUMN = 'score'
     TOPIC1 = 'topic1'
-    TOPIC2 = 'topic2f'
+    TOPIC2 = 'topic2'
 
     @keyword_only
     def __init__(self, config=None, ssc=None):
-        super(DummyProcessor, self).__init__(config=config)
-        source1 = KafkaStreamSource(config, ssc, self.TOPIC1)
-        source2 = KafkaStreamSource(config, ssc, self.TOPIC2)
-        receiver = HbaseReceiver(config, self.TABLE_NAME)
+        super(DummyProcessor, self).__init__(config=config, ssc=ssc)
+        source1 = KafkaStreamSource(config=config, ssc=ssc, topic=self.TOPIC1)
+        source2 = KafkaStreamSource(config=config, ssc=ssc, topic=self.TOPIC2)
+        receiver = HbaseReceiver(config=config, table_name=self.TABLE_NAME)
         self.setStages([source1, source2, self, receiver])
 
-        kwargs = self.__init__._input_kwargs
-        self._set(**kwargs)
-
     def _transform(self, dataset):
-        dataset = [stream.map(json.loads) for stream in dataset]
+        dataset = [stream.map(json.loads).map(lambda row: (row['id'], row)) for stream in dataset]
         return super()._transform(dataset)
 
     def process(self, row):
         if len(row) != 0:
             key = row[0]
-            topics_dict = dict(zip(self.topics, row[1]))
-            total_score = None
+            dict1 = row[1][0]
+            dict2 = row[1][1]
+
+            total_score = int(dict1['score']) + int(dict2['another_score'])
 
             result = {'table_name': self.TABLE_NAME,
                       'row': key,
@@ -45,7 +43,7 @@ class DummyProcessor(Pipeline, BaseStreamProcessor, HasStreamingContext):
             return result
 
 
-class TextProcessor(Pipeline, BaseTextFileTransformer):
+class TextProcessor(BaseTextFileTransformer):
     TABLE_NAME = 'dummy_table'
     COLUMN_FAMILY = 'dummy'
     COLUMN = 'count'
@@ -54,8 +52,8 @@ class TextProcessor(Pipeline, BaseTextFileTransformer):
     @keyword_only
     def __init__(self, config=None):
         super(TextProcessor, self).__init__(config=config)
-        source = FileSource(config, file_path=self.FILE_SOURCE)
-        receiver = FileReceiver(config, self.FILE_DEST)
+        source = FileSource(config=config, file_path=self.FILE_SOURCE)
+        receiver = FileReceiver(config=config, file_path=self.FILE_DEST)
         self.setStages([source, self, receiver])
 
     def process(self, row):

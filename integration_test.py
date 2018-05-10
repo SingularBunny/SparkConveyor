@@ -10,7 +10,7 @@ from hdfs3 import HDFileSystem
 from pyspark.streaming.tests import PySparkStreamingTestCase
 
 from dte_app import DataTransformationEngine
-from processors import DummyProcessor
+from processors.processors import DummyProcessor
 from socket_server import SocketServer
 
 test_file_path_1 = 'test_resources/test1'
@@ -26,8 +26,8 @@ class StreamingTest(PySparkStreamingTestCase):
     timeout = 20  # seconds
     duration = 5
 
-    test_topic_1 = 'test_topic_1'
-    test_topic_2 = 'test_topic_2'
+    test_topic_1 = 'topic1'
+    test_topic_2 = 'topic2'
 
     @classmethod
     def setUpClass(cls):
@@ -88,12 +88,14 @@ class StreamingTest(PySparkStreamingTestCase):
         cls.thrift_server_thread = threading.Thread(target=method.invoke, args=[cls._thriftServer, args])
         cls.thrift_server_thread.setDaemon(True)
         cls.thrift_server_thread.start()
+        time.sleep(5)
 
         cls._hbaseTestingUtility.getMiniHBaseCluster().waitForActiveAndReadyMaster(60000)
 
         # test topics
         cls._kafkaTestUtils.createTopic(cls.test_topic_1)
         cls._kafkaTestUtils.createTopic(cls.test_topic_2)
+
 
         # HBase configuration
         connection = happybase.Connection(port=cls.thrift_port)
@@ -134,7 +136,7 @@ class StreamingTest(PySparkStreamingTestCase):
             'hbase.host': 'localhost',
             'hbase.port': cls.thrift_port,
 
-            'processor.dir': './',
+            'processor.dir': 'processors',
             'processor.joinWindow': 20,
             'processor.poolExecutors': 1
         }
@@ -174,7 +176,7 @@ class StreamingTest(PySparkStreamingTestCase):
         connection = happybase.Connection(port=self.thrift_port)
 
         test_1 = '{"id": "12345", "score": "100"}'
-        test_2 = '{"id": "12345", "region": "California"}'
+        test_2 = '{"id": "12345", "another_score": "200"}'
 
         self._kafkaTestUtils.sendMessages(self.test_topic_1, {test_1: 5})
         self._kafkaTestUtils.sendMessages(self.test_topic_2, {test_2: 5})
@@ -193,7 +195,7 @@ class StreamingTest(PySparkStreamingTestCase):
                        .replace('dummy_table', 'test_dummy_table')
                        .replace('/', '*'))
 
-        with socket.create_connection(('localhost', self.engine_config['socketServer']['socketPort'])) as sock:
+        with socket.create_connection(('localhost', self.engine_config['socketServer.port'])) as sock:
             sock.sendall(bytes(SocketServer.Messages.RESTART_STREAMING_SIGNAL, 'utf-8'))
             received = str(sock.recv(1024), 'utf-8')
             self.assertTrue(received == SocketServer.Messages.RESTART_STREAMING_RESPONSE)

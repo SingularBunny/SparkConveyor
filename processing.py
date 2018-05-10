@@ -8,7 +8,7 @@ from abc import abstractmethod, ABCMeta
 import os
 
 from pyspark import SparkContext
-from pyspark.ml import Transformer
+from pyspark.ml import Transformer, Pipeline
 from pyspark.ml.param import Params, Param
 from pyspark.ml.util import keyword_only
 from pyspark.mllib.common import inherit_doc
@@ -48,15 +48,12 @@ def process_partition(class_name, processors_dir, partition, **kwargs):
     processor = next(filter(lambda proc: class_name == proc.__name__,
                             get_subclasses(processors_dir, Processor)))(**kwargs)
 
-    mapped_partition = []
     for row in partition:
         try:
-            mapped_partition.append(processor.process(row))
+            yield processor.process(row)
         except Exception as e:
             print(traceback.format_exc())
             print(e)
-
-    return [mapped_partition]
 
 
 def process_row(class_name, processors_dir, row, **kwargs):
@@ -261,17 +258,50 @@ class HasFileParams(Params):
         return self.getOrDefault(self.options)
 
 
+class HasStages(Params):
+    """
+    Mixin for param stages: pipeline stages
+    """
+
+    # a placeholder to make it appear in the generated doc
+    stages = Param(Params._dummy(), "stages", "pipeline stages")
+
+    def __init__(self):
+        super(HasStages, self).__init__()
+        #: Param for pipeline stages.
+        self.stages = Param(self, "stages", "pipeline stages")
+
+    def setStages(self, value):
+        """
+        Set pipeline stages.
+
+        :param value: a list of transformers or estimators
+        :return: the pipeline instance
+        """
+        self._paramMap[self.stages] = value
+        return self
+
+    def getStages(self):
+        """
+        Get pipeline stages.
+        """
+        return self.getOrDefault(self.stages)
+
+
 @inherit_doc
-class BaseTextFileTransformer(Transformer,  Processor, HasConfig):
+class BaseTextFileTransformer(Transformer, Processor, HasConfig, HasStages, metaclass=ABCMeta):
     """
     Example transformer.
     """
 
     @keyword_only
-    def __init__(self, config=None):
+    def __init__(self, config=None, stages=None):
         super(BaseTextFileTransformer, self).__init__()
         if config is None:
             config = {}
+
+        if stages is None:
+            stages = []
 
         kwargs = self.__init__._input_kwargs
 
@@ -294,22 +324,25 @@ class BaseTextFileTransformer(Transformer,  Processor, HasConfig):
 
 
 @inherit_doc
-class BaseStreamProcessor(Transformer, Processor, HasConfig):
+class BaseStreamProcessor(Transformer, Processor, HasConfig, HasStreamingContext, HasStages, metaclass=ABCMeta):
     """
     Example transformer.
     """
 
     @keyword_only
-    def __init__(self, config=None):
+    def __init__(self, config=None, ssc=None, stages=None):
         super(BaseStreamProcessor, self).__init__()
         if config is None:
             config = {}
+
+        if stages is None:
+            stages = []
 
         kwargs = self.__init__._input_kwargs
         self._set(**kwargs)
 
     def _transform(self, dataset):
-        if isinstance(dataset, collections.Iterable):
+        if not isinstance(dataset, collections.Iterable):
             dataset = [].append(dataset)
 
         processors_dir = self.getConfig()['processor.dir']
@@ -320,8 +353,7 @@ class BaseStreamProcessor(Transformer, Processor, HasConfig):
             return process_partition(class_name, processors_dir, partition, **kwargs)
 
         return self.make_joined_stream(*dataset) \
-            .foreachRDD(lambda rdd: rdd
-                        .foreachPartition(proc_partition))
+            .mapPartitions(proc_partition)
 
     def make_joined_stream(self, *args):
         """

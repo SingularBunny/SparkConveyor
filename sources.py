@@ -50,9 +50,10 @@ class KafkaStreamSource(Transformer, Source, HasConfig, HasStreamingContext):
     def _transform(self, dataset):
         if dataset is None:
             dataset = []
-        return dataset.append(self.get_source() \
-                              .map(lambda x: x[1]))
-        # .window(self.processor_config['window'])
+        dataset.append(self.get_source().map(lambda x: x[1])
+                       .window(self.getOrDefault(self.config)['processor.joinWindow']))
+
+        return dataset
 
     def get_source(self):
         """

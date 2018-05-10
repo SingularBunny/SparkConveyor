@@ -24,6 +24,6 @@ hbase.host: 'localhost'
 hbase.port: 9090
 
 # Processors
-processor.dir: '/'
+processor.dir: 'processors/'
 processor.joinWindow: 20
 processor.poolExecutors: 1
