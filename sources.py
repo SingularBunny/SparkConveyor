@@ -6,7 +6,7 @@ from pyspark.ml.util import keyword_only
 from pyspark.mllib.common import inherit_doc
 from pyspark.streaming.kafka import KafkaUtils
 
-from processing import HasConfig, HasStreamingContext, HasSqlContext, HasFileParams
+from processing import HasConfig, HasStreamingContext, HasSqlContext, HasFileParams, HasKafkaSource
 
 
 @inherit_doc
@@ -23,7 +23,7 @@ class Source(Params):
 
 
 @inherit_doc
-class KafkaStreamSource(Transformer, Source, HasConfig, HasStreamingContext):
+class KafkaStreamSource(Transformer, Source, HasConfig, HasStreamingContext, HasKafkaSource):
 
     @keyword_only
     def __init__(self, config=None, ssc=None, topic=None, num_partitions=1):
@@ -38,9 +38,6 @@ class KafkaStreamSource(Transformer, Source, HasConfig, HasStreamingContext):
         super(KafkaStreamSource, self).__init__()
         if config is None:
             config = {}
-
-        self.topic = Param(self, "topic", "Kafka topic name.")
-        self.num_partitions = Param(self, "num_partitions", "n umber of partitions by topic.")
 
         self._setDefault(num_partitions=1)
 
@@ -69,7 +66,7 @@ class KafkaStreamSource(Transformer, Source, HasConfig, HasStreamingContext):
 
 
 @inherit_doc
-class CoProcessorSource(KafkaStreamSource):
+class CoProcessorSource(Transformer, Source, HasConfig, HasStreamingContext, HasKafkaSource):
 
     @keyword_only
     def __init__(self, config=None, ssc=None, topic=None, num_partitions=1, table_name=None, hdfs_path=None):
@@ -83,7 +80,7 @@ class CoProcessorSource(KafkaStreamSource):
         :param table_name: table where co-processor works.
         :param hdfs_path:
         """
-        super(CoProcessorSource, self).__init__(config, ssc, topic, num_partitions)
+        super(CoProcessorSource, self).__init__()
         self._pl = self.getStreamingContext()._jvm.ru.homecredit.smartdata.coprocessors.PutListener
         conf = self._pl.getConfiguration()
         for key, value in config['hadoop.conf'].items():
@@ -92,6 +89,8 @@ class CoProcessorSource(KafkaStreamSource):
 
         self.table_name = Param(self, "table_name", "table where co-processor works.")
         self.hdfs_path = Param(self, "hdfs_path", "number of partitions by topic.")
+
+        self._setDefault(num_partitions=1)
 
         kwargs = self.__init__._input_kwargs
         self._set(**kwargs)

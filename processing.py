@@ -288,6 +288,52 @@ class HasStages(Params):
         return self.getOrDefault(self.stages)
 
 
+class HasKafkaSource(Params):
+    """
+    Mixin for param kafka source params.
+    """
+
+    # a placeholder to make it appear in the generated doc
+    topic = Param(Params._dummy(), "topic", "Kafka topic name.")
+    num_partitions = Param(Params._dummy(), "num_partitions", "n umber of partitions by topic.")
+
+    def __init__(self):
+        super(HasStages, self).__init__()
+        #: Param for kafka topic.
+        self.topic = Param(self, "topic", "Kafka topic name.")
+        #: Param for pipeline num_partitions.
+        self.num_partitions = Param(self, "num_partitions", "n umber of partitions by topic.")
+
+    def setTopic(self, value):
+        """
+        Set kafka topic.
+
+        :param str value: a kafka topic
+        """
+        self._paramMap[self.topic] = value
+        return self
+
+    def getTopic(self):
+        """
+        Get kafka topic.
+        """
+        return self.getOrDefault(self.topic)
+
+    def setNumPartitions(self, value):
+        """
+        Set number of partitions.
+
+        :param int value: number of Kafka partitions.
+        """
+        self._paramMap[self.num_partitions] = value
+        return self
+
+    def getNumPartitions(self):
+        """
+        Get number of partitions.
+        """
+        return self.getOrDefault(self.num_partitions)
+
 @inherit_doc
 class BaseTextFileTransformer(Transformer, Processor, HasConfig, HasStages, metaclass=ABCMeta):
     """
