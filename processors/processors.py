@@ -32,14 +32,13 @@ class DummyProcessor(BaseStreamProcessor):
             dict1 = row[1][0]
             dict2 = row[1][1]
 
-            total_score = int(dict1['score']) + int(dict2['another_score'])
+            total_score = int(dict1['score']) / int(dict2['another_score'])
 
             result = {'table_name': self.TABLE_NAME,
                       'row': key,
                       'column_family': self.COLUMN_FAMILY,
                       'column': self.COLUMN,
                       'data': total_score}
-
             return result
 
 

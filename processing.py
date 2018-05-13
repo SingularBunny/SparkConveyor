@@ -298,7 +298,7 @@ class HasKafkaSource(Params):
     num_partitions = Param(Params._dummy(), "num_partitions", "n umber of partitions by topic.")
 
     def __init__(self):
-        super(HasStages, self).__init__()
+        super(HasKafkaSource, self).__init__()
         #: Param for kafka topic.
         self.topic = Param(self, "topic", "Kafka topic name.")
         #: Param for pipeline num_partitions.

@@ -25,5 +25,5 @@ hbase.port: 9090
 
 # Processors
 processor.dir: 'processors/'
-processor.joinWindow: 20
+processor.joinWindow: 1
 processor.poolExecutors: 1

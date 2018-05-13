@@ -81,12 +81,6 @@ class CoProcessorSource(Transformer, Source, HasConfig, HasStreamingContext, Has
         :param hdfs_path:
         """
         super(CoProcessorSource, self).__init__()
-        self._pl = self.getStreamingContext()._jvm.ru.homecredit.smartdata.coprocessors.PutListener
-        conf = self._pl.getConfiguration()
-        for key, value in config['hadoop.conf'].items():
-            conf.set(key, str(value))
-        self._pl.deployMe(table_name, config['hadoop.dfs.url'] + str(hdfs_path))
-
         self.table_name = Param(self, "table_name", "table where co-processor works.")
         self.hdfs_path = Param(self, "hdfs_path", "number of partitions by topic.")
 
@@ -95,6 +89,31 @@ class CoProcessorSource(Transformer, Source, HasConfig, HasStreamingContext, Has
         kwargs = self.__init__._input_kwargs
         self._set(**kwargs)
 
+        self._pl = self.getStreamingContext()._jvm.ru.homecredit.smartdata.coprocessors.PutListener
+        conf = self._pl.getConfiguration()
+        for key, value in config['hadoop.conf'].items():
+            conf.set(key, str(value))
+        self._pl.deployMe(table_name, config['hadoop.dfs.url'] + str(hdfs_path))
+
+    def _transform(self, dataset):
+        if dataset is None:
+            dataset = []
+        dataset.append(self.get_source().map(lambda x: x[1])
+                       .window(self.getOrDefault(self.config)['processor.joinWindow']))
+
+        return dataset
+
+    def get_source(self):
+        """
+        Returns Kafka stream
+        """
+        config = self.getConfig()
+        return KafkaUtils \
+            .createStream(self.getStreamingContext(),
+                          config['zookeeper.zkQuorum'],
+                          config['kafka.groupId'],
+                          {self.getOrDefault(self.topic): self.getOrDefault(self.num_partitions)},
+                          config['kafka.params'])
 
 @inherit_doc
 class FileSource(Transformer, Source, HasSqlContext, HasFileParams):

@@ -95,7 +95,8 @@ class StreamingTest(PySparkStreamingTestCase):
         # test topics
         cls._kafkaTestUtils.createTopic(cls.test_topic_1)
         cls._kafkaTestUtils.createTopic(cls.test_topic_2)
-
+        cls._kafkaTestUtils.createTopic('test_topic1')
+        cls._kafkaTestUtils.createTopic('test_topic2')
 
         # HBase configuration
         connection = happybase.Connection(port=cls.thrift_port)
@@ -162,18 +163,16 @@ class StreamingTest(PySparkStreamingTestCase):
 
 
     def test_streaming_mode(self):
+        # self.sc.setLogLevel('DEBUG')
         try:
             os.remove('processors/test_processors.py')
         except Exception as e:
             pass  # it's Ok
-        # self.sc.setLogLevel('DEBUG')
 
         engine = DataTransformationEngine(self.sc, self.engine_config)
         engine.start()
         # wait up to 10s for the server to start
-        time.sleep(5)
-
-        connection = happybase.Connection(port=self.thrift_port)
+        time.sleep(10)
 
         test_1 = '{"id": "12345", "score": "100"}'
         test_2 = '{"id": "12345", "another_score": "200"}'
@@ -182,9 +181,11 @@ class StreamingTest(PySparkStreamingTestCase):
         self._kafkaTestUtils.sendMessages(self.test_topic_2, {test_2: 5})
 
         time.sleep(5)
-        # connection = happybase.Connection(port=self.thrift_port)
+        connection = happybase.Connection(port=self.thrift_port)
         table = connection.table('dummy_table')
-        row = table.row(b'b98a1f89-e47e-42a8-9322-9fcd31102578', columns=[b'dummy:score'])
+        row = table.row(b'12345', columns=[b'dummy:score'])
+        print(row)
+        self.assertEquals(row[b'dummy:score'], b'0.5')
 
         with open('processors/processors.py') as python_file, open('processors/test_processors.py',
                                                                    'w') as test_python_file:
@@ -193,6 +194,8 @@ class StreamingTest(PySparkStreamingTestCase):
                        .read()
                        .replace('DummyProcessor', 'TestDummyProcessor')
                        .replace('dummy_table', 'test_dummy_table')
+                       .replace('topic1', 'test_topic1')
+                       .replace('topic2', 'test_topic2')
                        .replace('/', '*'))
 
         with socket.create_connection(('localhost', self.engine_config['socketServer.port'])) as sock:
@@ -200,17 +203,15 @@ class StreamingTest(PySparkStreamingTestCase):
             received = str(sock.recv(1024), 'utf-8')
             self.assertTrue(received == SocketServer.Messages.RESTART_STREAMING_RESPONSE)
 
-        time.sleep(30)
-        self._kafkaTestUtils.sendMessages(self.test_topic_1, {test_1: 5})
-        self._kafkaTestUtils.sendMessages(self.test_topic_2, {test_2: 5})
+        time.sleep(20)
+        self._kafkaTestUtils.sendMessages('test_topic1', {test_1: 5})
+        self._kafkaTestUtils.sendMessages('test_topic2', {test_2: 5})
 
         time.sleep(5)
         test_row = connection.table('test_dummy_table') \
-            .row(b'row_key', columns=[b'dummy:score'])
+            .row(b'12345', columns=[b'dummy:score'])
 
-        print(row)
-        print(test_row)
-        self.assertTrue(float(row[b'dummy:score']) < float(test_row[b'dummy:score']))
+        self.assertEquals(test_row[b'dummy:score'], b'20000')
 
         engine.stop()
         os.remove('processors/test_processors.py')
