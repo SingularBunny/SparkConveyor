@@ -28,6 +28,7 @@ class StreamingTest(PySparkStreamingTestCase):
 
     test_topic_1 = 'topic1'
     test_topic_2 = 'topic2'
+    test_topic_3 = 'topic3'
 
     @classmethod
     def setUpClass(cls):
@@ -109,14 +110,17 @@ class StreamingTest(PySparkStreamingTestCase):
             {'dummy': dict()}
         )
 
-        # HDFS configuration (uses for co-processors)
-        # dfs = cls._hbaseTestingUtility.getDFSCluster().getFileSystem()
-        # hdfs = HDFileSystem(host='localhost',
-        #                     port=dfs.getUri().getPort(),
-        #                     pars={'dfs.client.read.shortcircuit': 'false'})
-        #
-        # hdfs.put('../../../../hbase-coprocessors/target/scala-2.10/hbase-coprocessors.jar',
-        #          '/hbase-coprocessors.jar')
+        # TODO Add table for coprocessor tests
+
+        #HDFS configuration (uses for co-processors)
+        dfs = cls._hbaseTestingUtility.getDFSCluster().getFileSystem()
+        hdfs = HDFileSystem(host='localhost',
+                            port=dfs.getUri().getPort(),
+                            pars={'dfs.client.read.shortcircuit': 'false'})
+
+        # TODO change path to real test co-prc.
+        hdfs.put('../../../../hbase-coprocessors/target/scala-2.10/hbase-coprocessors.jar',
+                 '/hbase-coprocessors.jar')
 
         # streaming engine test configuration
         cls.engine_config = {
@@ -174,6 +178,7 @@ class StreamingTest(PySparkStreamingTestCase):
         # wait up to 10s for the server to start
         time.sleep(10)
 
+        # Test Kafka source, Hbase receiver START
         test_1 = '{"id": "12345", "score": "100"}'
         test_2 = '{"id": "12345", "another_score": "200"}'
 
@@ -212,7 +217,11 @@ class StreamingTest(PySparkStreamingTestCase):
             .row(b'12345', columns=[b'dummy:score'])
 
         self.assertEquals(test_row[b'dummy:score'], b'20000')
+        # Test Kafka source, Hbase receiver STOP
 
+        # Test CoProcessor source, Hbase receiver START
+
+        # Test CoProcessor source, Hbase receiver STOP
         engine.stop()
         os.remove('processors/test_processors.py')
 
