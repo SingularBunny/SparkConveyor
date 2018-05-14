@@ -53,7 +53,7 @@ class CoPrcProcessor(BaseStreamProcessor):
     @keyword_only
     def __init__(self, config=None, ssc=None):
         super(CoPrcProcessor, self).__init__(config=config, ssc=ssc)
-        source = CoProcessorSource(config=config, ssc=ssc, topic=self.TOPIC)
+        source = CoProcessorSource(config=config, ssc=ssc, topic=self.TOPIC, table_name=self.TABLE_NAME, hdfs_path=self.HDFS_PATH)
         receiver = HbaseReceiver(config=config, table_name=self.TABLE_NAME)
         self.setStages([source, self, receiver])
 

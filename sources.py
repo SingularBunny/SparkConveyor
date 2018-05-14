@@ -89,11 +89,12 @@ class CoProcessorSource(Transformer, Source, HasConfig, HasStreamingContext, Has
         kwargs = self.__init__._input_kwargs
         self._set(**kwargs)
 
-        self._pl = self.getStreamingContext()._jvm.ru.homecredit.smartdata.coprocessors.PutListener
-        conf = self._pl.getConfiguration()
-        for key, value in config['hadoop.conf'].items():
-            conf.set(key, str(value))
-        self._pl.deployMe(table_name, config['hadoop.dfs.url'] + str(hdfs_path))
+        if ssc:
+            self._pl = self.getStreamingContext()._jvm.ru.homecredit.smartdata.coprocessors.PutListener
+            conf = self._pl.getConfiguration()
+            for key, value in config['hadoop.conf'].items():
+                conf.set(key, str(value))
+            self._pl.deployMe(table_name, config['hadoop.dfs.url'] + str(hdfs_path))
 
     def _transform(self, dataset):
         if dataset is None:
