@@ -113,9 +113,9 @@ class StreamingTest(PySparkStreamingTestCase):
         # TODO Add table for coprocessor tests
 
         #HDFS configuration (uses for co-processors)
-        dfs = cls._hbaseTestingUtility.getDFSCluster().getFileSystem()
+        port = cls._hbaseTestingUtility.getDFSCluster().getNameNodePort()
         hdfs = HDFileSystem(host='localhost',
-                            port=dfs.getUri().getPort(),
+                            port=port,
                             pars={'dfs.client.read.shortcircuit': 'false'})
 
         # TODO change path to real test co-prc.

@@ -401,21 +401,21 @@ class BaseStreamProcessor(Transformer, Processor, HasConfig, HasStreamingContext
         return self.make_joined_stream(*dataset) \
             .mapPartitions(proc_partition)
 
-    def make_joined_stream(self, *args):
+    def make_joined_stream(self, *streams):
         """
         Join logic.
 
         :param kwargs: (str name, DStream stream) pairs.
         :return: single joined stream.
         """
-        if len(args) == 1:
+        if len(streams) == 1:
             # single stream
-            return list(args).pop()
+            return list(streams).pop()
         else:
             # joined stream
             return functools \
                 .reduce(lambda stream1, stream2: stream1
-                        .join(stream2), args)
+                        .join(stream2), streams)
 
     @abstractmethod
     def process(self, data):

@@ -1,6 +1,6 @@
 import json
 
-from pyspark.ml.util import keyword_only
+from pyspark import keyword_only
 
 from processing import BaseTextFileTransformer, BaseStreamProcessor
 from receivers import HbaseReceiver, FileReceiver
