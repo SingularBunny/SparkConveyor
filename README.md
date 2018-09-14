@@ -1,2 +1,2 @@
-# Data transformation engine.
-Based on Spark ML Pipelines.
+# SparkConveyor
+Data transformation engine. Based on Spark ML Pipelines.
