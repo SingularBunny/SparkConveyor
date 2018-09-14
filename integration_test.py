@@ -10,11 +10,11 @@ from hdfs3 import HDFileSystem
 from pyspark.streaming.tests import PySparkStreamingTestCase
 
 from dte_app import DataTransformationEngine
-from processors import DummyProcessor
+from processors.processors import DummyProcessor
 from socket_server import SocketServer
 
-test_file_path_1 = 'resources/test1'
-test_file_path_2 = 'resources/test2'
+test_file_path_1 = 'test_resources/test1'
+test_file_path_2 = 'test_resources/test2'
 
 
 # TODO should split streaming and batch tests
@@ -26,8 +26,9 @@ class StreamingTest(PySparkStreamingTestCase):
     timeout = 20  # seconds
     duration = 5
 
-    test_topic_1 = 'test_topic_1'
-    test_topic_2 = 'test_topic_2'
+    test_topic_1 = 'topic1'
+    test_topic_2 = 'topic2'
+    test_topic_3 = 'topic3'
 
     @classmethod
     def setUpClass(cls):
@@ -88,12 +89,15 @@ class StreamingTest(PySparkStreamingTestCase):
         cls.thrift_server_thread = threading.Thread(target=method.invoke, args=[cls._thriftServer, args])
         cls.thrift_server_thread.setDaemon(True)
         cls.thrift_server_thread.start()
+        time.sleep(5)
 
         cls._hbaseTestingUtility.getMiniHBaseCluster().waitForActiveAndReadyMaster(60000)
 
         # test topics
         cls._kafkaTestUtils.createTopic(cls.test_topic_1)
         cls._kafkaTestUtils.createTopic(cls.test_topic_2)
+        cls._kafkaTestUtils.createTopic('test_topic1')
+        cls._kafkaTestUtils.createTopic('test_topic2')
 
         # HBase configuration
         connection = happybase.Connection(port=cls.thrift_port)
@@ -106,40 +110,40 @@ class StreamingTest(PySparkStreamingTestCase):
             {'dummy': dict()}
         )
 
-        # HDFS configuration (uses for co-processors)
-        # dfs = cls._hbaseTestingUtility.getDFSCluster().getFileSystem()
-        # hdfs = HDFileSystem(host='localhost',
-        #                     port=dfs.getUri().getPort(),
-        #                     pars={'dfs.client.read.shortcircuit': 'false'})
-        #
-        # hdfs.put('../../../../hbase-coprocessors/target/scala-2.10/hbase-coprocessors.jar',
-        #          '/hbase-coprocessors.jar')
+        # TODO Add table for coprocessor tests
+
+        #HDFS configuration (uses for co-processors)
+        port = cls._hbaseTestingUtility.getDFSCluster().getNameNodePort()
+        hdfs = HDFileSystem(host='localhost',
+                            port=port,
+                            pars={'dfs.client.read.shortcircuit': 'false'})
+
+        # TODO change path to real test co-prc.
+        hdfs.put('../../../../hbase-coprocessors/target/scala-2.10/hbase-coprocessors.jar',
+                 '/hbase-coprocessors.jar')
 
         # streaming engine test configuration
         cls.engine_config = {
-            'processorsDir': 'processors',
-            'socketServer': {
-                'socketPort': 4444,  # port of socket server
-            },
-            'kafkaSource': {
-                'zkQuorum': cls._kafkaTestUtils.zkAddress(),
-                'groupId': 'test-streaming-consumer',
-                'kafkaParams': {'auto.offset.reset': 'largest'},
-            },
-            'processor': {
-                'window': 20,
-                'processorExecutors': None,
-                'hbase': {
-                    'host': 'localhost',
-                    'port': cls.thrift_port
-                },
-                'hdfs': 'hdfs://localhost:{}/'.format(cls._hbaseTestingUtility.getDFSCluster().getFileSystem()
-                                                      .getUri().getPort())
-            },
-            'hadoopConf': {
+            'socketServer.port': 4444,  # port of socket server
+
+            'hadoop.dfs.url': 'hdfs://localhost:{}/'.format(cls._hbaseTestingUtility.getDFSCluster().getFileSystem()
+                                                      .getUri().getPort()),
+            'hadoop.conf': {
                 'hbase.table.sanity.checks': False,
                 'hbase.zookeeper.property.clientPort': cls._kafkaTestUtils.zkAddress().split(':')[1]
-            }
+            },
+
+            'zookeeper.zkQuorum': cls._kafkaTestUtils.zkAddress(),
+
+            'kafka.groupId': 'test-streaming-consumer',
+            'kafka.params': {'auto.offset.reset': 'largest'},
+
+            'hbase.host': 'localhost',
+            'hbase.port': cls.thrift_port,
+
+            'processor.dir': 'processors',
+            'processor.joinWindow': 20,
+            'processor.poolExecutors': 1
         }
 
     @classmethod
@@ -163,30 +167,30 @@ class StreamingTest(PySparkStreamingTestCase):
 
 
     def test_streaming_mode(self):
+        # self.sc.setLogLevel('DEBUG')
         try:
             os.remove('processors/test_processors.py')
         except Exception as e:
             pass  # it's Ok
-        # self.sc.setLogLevel('DEBUG')
 
         engine = DataTransformationEngine(self.sc, self.engine_config)
         engine.start()
         # wait up to 10s for the server to start
-        time.sleep(5)
+        time.sleep(10)
 
-        connection = happybase.Connection(port=self.thrift_port)
-
-        with open(test_file_path_1) as test_file_1, open(test_file_path_2) as test_file_2:
-            test_1 = test_file_1.read()
-            test_2 = test_file_2.read()
+        # Test Kafka source, Hbase receiver START
+        test_1 = '{"id": "12345", "score": "100"}'
+        test_2 = '{"id": "12345", "another_score": "200"}'
 
         self._kafkaTestUtils.sendMessages(self.test_topic_1, {test_1: 5})
         self._kafkaTestUtils.sendMessages(self.test_topic_2, {test_2: 5})
 
         time.sleep(5)
-        # connection = happybase.Connection(port=self.thrift_port)
+        connection = happybase.Connection(port=self.thrift_port)
         table = connection.table('dummy_table')
-        row = table.row(b'b98a1f89-e47e-42a8-9322-9fcd31102578', columns=[b'dummy:score'])
+        row = table.row(b'12345', columns=[b'dummy:score'])
+        print(row)
+        self.assertEquals(row[b'dummy:score'], b'0.5')
 
         with open('processors/processors.py') as python_file, open('processors/test_processors.py',
                                                                    'w') as test_python_file:
@@ -195,25 +199,29 @@ class StreamingTest(PySparkStreamingTestCase):
                        .read()
                        .replace('DummyProcessor', 'TestDummyProcessor')
                        .replace('dummy_table', 'test_dummy_table')
+                       .replace('topic1', 'test_topic1')
+                       .replace('topic2', 'test_topic2')
                        .replace('/', '*'))
 
-        with socket.create_connection(('localhost', self.engine_config['socketServer']['socketPort'])) as sock:
+        with socket.create_connection(('localhost', self.engine_config['socketServer.port'])) as sock:
             sock.sendall(bytes(SocketServer.Messages.RESTART_STREAMING_SIGNAL, 'utf-8'))
             received = str(sock.recv(1024), 'utf-8')
             self.assertTrue(received == SocketServer.Messages.RESTART_STREAMING_RESPONSE)
 
-        time.sleep(30)
-        self._kafkaTestUtils.sendMessages(self.test_topic_1, {test_1: 5})
-        self._kafkaTestUtils.sendMessages(self.test_topic_2, {test_2: 5})
+        time.sleep(20)
+        self._kafkaTestUtils.sendMessages('test_topic1', {test_1: 5})
+        self._kafkaTestUtils.sendMessages('test_topic2', {test_2: 5})
 
         time.sleep(5)
         test_row = connection.table('test_dummy_table') \
-            .row(b'row_key', columns=[b'dummy:score'])
+            .row(b'12345', columns=[b'dummy:score'])
 
-        print(row)
-        print(test_row)
-        self.assertTrue(float(row[b'dummy:score']) < float(test_row[b'dummy:score']))
+        self.assertEquals(test_row[b'dummy:score'], b'20000')
+        # Test Kafka source, Hbase receiver STOP
 
+        # Test CoProcessor source, Hbase receiver START
+
+        # Test CoProcessor source, Hbase receiver STOP
         engine.stop()
         os.remove('processors/test_processors.py')
 
@@ -226,7 +234,7 @@ class StreamingTest(PySparkStreamingTestCase):
                             port=dfs.getUri().getPort(),
                             pars={'dfs.client.read.shortcircuit': 'false'})
 
-        hdfs.put('resources/batch_test', '/batch_test')
+        hdfs.put('test_resources/batch_test', '/batch_test')
 
         self.engine_config['mode'] = 'batch'
         engine = DataTransformationEngine(self.sc, self.engine_config)

@@ -51,9 +51,10 @@ class HbaseReceiver(Transformer, Receiver, HasConfig):
             table = connection.table(table_name)
             b = table.batch()
             for row in partition:
-                b.put(bytes(row['row'], 'utf-8'),
-                      {bytes(row['column_family'] + ':' + row['column'], 'utf-8'):
-                           bytes(str(row['data']), 'utf-8')})
+                if row:
+                    b.put(bytes(row['row'], 'utf-8'),
+                          {bytes(row['column_family'] + ':' + row['column'], 'utf-8'):
+                               bytes(str(row['data']), 'utf-8')})
 
             b.send()
 
