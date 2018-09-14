@@ -9,7 +9,7 @@ from pyspark.ml.util import keyword_only
 from pyspark.mllib.common import inherit_doc
 from pyspark.sql import DataFrame
 
-from processing import HasConfig, HasFileParams
+from python.processing import HasConfig, HasFileParams
 
 
 @inherit_doc

@@ -1,7 +1,7 @@
 from unittest import TestCase
 
-from processing import get_subclasses, Processor
-from processors.processors import DummyProcessor
+from python.processing import get_subclasses, Processor
+from python.processors.processors import DummyProcessor
 
 
 class DynamicClassLoadingTest(TestCase):

@@ -9,9 +9,9 @@ import os
 from hdfs3 import HDFileSystem
 from pyspark.streaming.tests import PySparkStreamingTestCase
 
-from dte_app import DataTransformationEngine
-from processors.processors import DummyProcessor
-from socket_server import SocketServer
+from python.dte_app import DataTransformationEngine
+from python.processors.processors import DummyProcessor
+from python.socket_server import SocketServer
 
 test_file_path_1 = 'test_resources/test1'
 test_file_path_2 = 'test_resources/test2'

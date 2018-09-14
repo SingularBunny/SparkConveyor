@@ -2,9 +2,9 @@ import json
 
 from pyspark import keyword_only
 
-from processing import BaseTextFileTransformer, BaseStreamProcessor
-from receivers import HbaseReceiver, FileReceiver
-from sources import KafkaStreamSource, FileSource, CoProcessorSource
+from python.processing import BaseTextFileTransformer, BaseStreamProcessor
+from python.receivers import HbaseReceiver, FileReceiver
+from python.sources import KafkaStreamSource, FileSource, CoProcessorSource
 
 
 class DummyProcessor(BaseStreamProcessor):

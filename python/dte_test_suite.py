@@ -2,9 +2,7 @@ import os
 import sys
 from unittest import TestSuite, TextTestRunner
 
-from class_loading_test import DynamicClassLoadingTest
-from integration_test import StreamingTest
-from socket_server_test import SocketServerTest
+from python.integration_test import StreamingTest
 
 
 def suite():

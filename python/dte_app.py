@@ -7,8 +7,8 @@ from pyspark.ml import Pipeline, Transformer
 from pyspark.streaming import StreamingContext
 from yaml import load, Loader
 
-from processing import get_subclasses, Processor, HasConfig, HasStreamingContext, HasStages
-from socket_server import SocketServer, RequestHandler
+from python.processing import get_subclasses, Processor, HasConfig, HasStreamingContext, HasStages
+from python.socket_server import SocketServer, RequestHandler
 
 
 class DataTransformationEngine:

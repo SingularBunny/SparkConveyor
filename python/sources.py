@@ -6,7 +6,7 @@ from pyspark.ml.util import keyword_only
 from pyspark.mllib.common import inherit_doc
 from pyspark.streaming.kafka import KafkaUtils
 
-from processing import HasConfig, HasStreamingContext, HasSqlContext, HasFileParams, HasKafkaSource
+from python.processing import HasConfig, HasStreamingContext, HasSqlContext, HasFileParams, HasKafkaSource
 
 
 @inherit_doc
