@@ -1,6 +1,6 @@
 import sbt.Keys.{test, _}
 import sbt._
-
+import sbt.{Resolver, _}
 
 object Common {
 
