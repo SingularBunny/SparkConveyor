@@ -1,7 +1,4 @@
-import json
 from abc import ABC, abstractmethod
-from base64 import b64decode
-from xml.etree import ElementTree
 
 
 class TopicHandler(ABC):

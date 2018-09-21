@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod, ABCMeta
+from abc import abstractmethod, ABCMeta
 from argparse import ArgumentTypeError
 
 import happybase
@@ -9,7 +9,7 @@ from pyspark.ml.util import keyword_only
 from pyspark.mllib.common import inherit_doc
 from pyspark.sql import DataFrame
 
-from processing import HasConfig, HasFileParams
+from python.processing import HasConfig, HasFileParams
 
 
 @inherit_doc
@@ -51,9 +51,10 @@ class HbaseReceiver(Transformer, Receiver, HasConfig):
             table = connection.table(table_name)
             b = table.batch()
             for row in partition:
-                b.put(bytes(row['row'], 'utf-8'),
-                      {bytes(row['column_family'] + ':' + row['column'], 'utf-8'):
-                           bytes(str(row['data']), 'utf-8')})
+                if row:
+                    b.put(bytes(row['row'], 'utf-8'),
+                          {bytes(row['column_family'] + ':' + row['column'], 'utf-8'):
+                               bytes(str(row['data']), 'utf-8')})
 
             b.send()
 

@@ -7,8 +7,8 @@ from pyspark.ml import Pipeline, Transformer
 from pyspark.streaming import StreamingContext
 from yaml import load, Loader
 
-from processing import get_subclasses, Processor, HasConfig, HasStreamingContext
-from socket_server import SocketServer, RequestHandler
+from python.processing import get_subclasses, Processor, HasConfig, HasStreamingContext, HasStages
+from python.socket_server import SocketServer, RequestHandler
 
 
 class DataTransformationEngine:
@@ -39,12 +39,17 @@ class DataTransformationEngine:
     def process(self):
         if self.mode == 'batch':
 
-            self.processors = filter(lambda prc: not issubclass(prc, HasStreamingContext),
+            self.processors = filter(lambda prc: issubclass(prc, Transformer)
+                                     and issubclass(prc, Processor)
+                                     and issubclass(prc, HasConfig)
+                                     and not issubclass(prc, HasStreamingContext)
+                                     and issubclass(prc, HasStages),
                                      get_subclasses(self.config['processor.dir'],
                                                     (Pipeline, Transformer, Processor, HasConfig)))
 
             for processor in self.processors:
-                processor(self.config, self.spark_context, mode='batch').prepare()
+                Pipeline(processor(self.config, self.spark_context, mode='batch').getStages())\
+                    .fit(None).transform(None)
 
         elif self.mode == 'stream':
             while not self.stop_event.is_set():
@@ -53,11 +58,18 @@ class DataTransformationEngine:
                     # TODO move batch duration to config
                     self.spark_streaming_context = StreamingContext(self.spark_context, 0.5)
 
-                    self.processors = get_subclasses(self.config['processor.dir'],
-                                                     (Pipeline, Transformer, Processor, HasConfig, HasStreamingContext))
+                    self.processors = filter(lambda prc: issubclass(prc, Transformer)
+                                             and issubclass(prc, Processor)
+                                             and issubclass(prc, HasConfig)
+                                             and issubclass(prc, HasStreamingContext)
+                                             and issubclass(prc, HasStages),
+                                             get_subclasses(self.config['processor.dir'],
+                                                            (Pipeline, Transformer, Processor, HasConfig,
+                                                             HasStreamingContext)))
 
                     for processor in self.processors:
-                        processor(self.config, self.spark_streaming_context, mode='stream').prepare()
+                        Pipeline(stages=processor(config=self.config, ssc=self.spark_streaming_context).getStages())\
+                            .fit(None).transform(None)
 
                     self.spark_streaming_context.start()
                 else:

@@ -4,7 +4,7 @@ import unittest
 from unittest import TestCase
 from unittest.mock import Mock
 
-from socket_server import SocketServer, RequestHandler
+from python.socket_server import SocketServer, RequestHandler
 
 SOCKET_HOST = 'localhost'
 SOCKET_PORT = 9998
