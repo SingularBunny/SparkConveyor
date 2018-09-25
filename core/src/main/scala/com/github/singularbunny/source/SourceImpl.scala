@@ -1,5 +1,6 @@
 package com.github.singularbunny.source
 
+import com.github.singularbunny.param.{HasFormat, HasOptions}
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.{DataFrame, SparkSession}
